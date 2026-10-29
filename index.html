@@ -30,12 +30,41 @@ h3{margin:0 0 8px;font-size:1rem}
 .log p{margin:0 0 6px;padding-left:8px;border-left:3px solid var(--line)}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:6px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
+body{background:radial-gradient(1200px 500px at 50% -120px,color-mix(in srgb,var(--accent) 20%,transparent),transparent),var(--bg)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:.85rem;background:var(--card);font-variant-numeric:tabular-nums}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);animation:blink 1.6s infinite}
+h1{background:linear-gradient(90deg,var(--text),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.5px}
+.kpi div,.card{box-shadow:0 6px 22px rgba(0,0,0,.10)}
+.kpi div{border-top:3px solid var(--ok)}
+.kpi div:nth-child(2){border-top-color:var(--bad)}
+.kpi div:nth-child(3){border-top-color:var(--warn)}
+.kpi strong{font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+button{transition:.15s}
+button:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.18)}
+#rnd{background:var(--bad);color:#fff;border-color:var(--bad)}
+.n{transition:filter .2s}
+.n:hover{filter:brightness(1.2)}
+.pulse{animation:pulse 1.2s infinite}
+.flow{stroke-dasharray:6 6;animation:flow 1s linear infinite}
+@keyframes blink{50%{opacity:.35}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes flow{to{stroke-dashoffset:-12}}
+@media (prefers-reduced-motion:reduce){.dot,.pulse,.flow{animation:none}}
+:root[data-theme="navy"]{--bg:#0a1628;--card:#10213b;--text:#e3ecff;--muted:#7f93b5;--line:#1f3558;--accent:#4da3ff;--ok:#3ddc97;--warn:#ffc857;--bad:#ff5d6c;color-scheme:dark}
+:root[data-theme="neon"]{--bg:#0d0221;--card:#1a0b3d;--text:#f5e9ff;--muted:#a28bc9;--line:#3a1f70;--accent:#ff2bd6;--ok:#00f5a0;--warn:#ffe14d;--bad:#ff3860;color-scheme:dark}
+:root[data-theme="green"]{--bg:#04110a;--card:#08200f;--text:#c9ffd8;--muted:#5fa578;--line:#15462a;--accent:#2dff7a;--ok:#2dff7a;--warn:#ffd23f;--bad:#ff4d4d;color-scheme:dark}
+:root[data-theme="sand"]{--bg:#f6efe3;--card:#fffaf0;--text:#3a2e1f;--muted:#8c7b63;--line:#e4d6bd;--accent:#c2571a;--ok:#2f8f4e;--warn:#b7791f;--bad:#c93a2f;color-scheme:light}
+.sw{display:inline-flex;gap:6px;align-items:center}
+.sw b{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);cursor:pointer;display:block}
+.sw b.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+#bgc{width:34px;height:30px;padding:0;border:1px solid var(--line);border-radius:8px;background:none;cursor:pointer}
 </style>
 </head>
 <body>
 <main>
-<h1>Центр управления сетью</h1>
-<p class="sub">Ядро, агрегация и сеть доступа. Нажми на узел, чтобы управлять им, или имитируй аварию.</p>
+<div class="top"><div><h1>Центр управления сетью</h1>
+<p class="sub">Ядро, агрегация и сеть доступа. Нажми на узел, чтобы управлять им, или имитируй аварию.</p></div><div class="pill"><span class="dot"></span><span id="clock"></span></div></div>
 <div class="kpi">
 <div><small>Доступность абонентов</small><strong id="k1"></strong></div>
 <div><small>Без связи, абонентов</small><strong id="k2"></strong></div>
@@ -45,7 +74,7 @@ h3{margin:0 0 8px;font-size:1rem}
 <section class="card">
 <svg id="map" viewBox="0 0 600 330" role="img" aria-label="Топология сети"></svg>
 <div class="legend"><span><i style="background:var(--ok)"></i>норма</span><span><i style="background:var(--warn)"></i>деградация</span><span><i style="background:var(--bad)"></i>авария</span><span><i style="background:var(--muted)"></i>нет связи с центром</span></div>
-<div class="btns"><button id="rnd">Имитировать аварию</button><button id="all">Восстановить всё</button><button id="theme">Сменить тему</button></div>
+<div class="btns"><button id="rnd">Имитировать аварию</button><button id="all">Восстановить всё</button><span class="sw" id="sw"></span><input type="color" id="bgc" title="Свой цвет фона" aria-label="Свой цвет фона"></div>
 </section>
 <section>
 <div class="card" id="panel" style="margin-bottom:14px"></div>
@@ -73,9 +102,9 @@ else if(s==="warn")log("warn","Деградация: "+n.n+", рост поте�
 else log("ok","Восстановлено: "+n.n);}
 function render(){
 var g="";
-nodes.forEach(function(n){if(n.p){var p=byId[n.p];g+='<line x1="'+p.x+'" y1="'+p.y+'" x2="'+n.x+'" y2="'+n.y+'" stroke="'+col[eff(n)==="lost"?"lost":eff(n)==="down"?"down":"ok"]+'" stroke-width="2" '+(eff(n)==="lost"||eff(n)==="down"?'stroke-dasharray="4 4"':'')+'/>'}});
+nodes.forEach(function(n){if(n.p){var p=byId[n.p];g+='<line x1="'+p.x+'" y1="'+p.y+'" x2="'+n.x+'" y2="'+n.y+'" stroke="'+col[eff(n)==="lost"?"lost":eff(n)==="down"?"down":"ok"]+'" stroke-width="2" '+(eff(n)==="lost"||eff(n)==="down"?'stroke-dasharray="4 4"':'class="flow"')+'/>'}});
 nodes.forEach(function(n){var e=eff(n),c=col[e],s=sel===n.id?' stroke="var(--accent)" stroke-width="3"':' stroke="var(--card)" stroke-width="2"';
-g+='<g class="n" data-id="'+n.id+'">';
+g+='<g class="n'+(e==="down"?' pulse':'')+'" data-id="'+n.id+'" style="filter:drop-shadow(0 0 '+(e==="ok"?4:e==="lost"?0:9)+'px '+c+')">';
 if(n.t==="bs")g+='<rect x="'+(n.x-22)+'" y="'+(n.y-16)+'" width="44" height="32" rx="7" fill="'+c+'"'+s+'/>';
 else g+='<circle cx="'+n.x+'" cy="'+n.y+'" r="'+(n.t==="core"?26:21)+'" fill="'+c+'"'+s+'/>';
 g+='<text x="'+n.x+'" y="'+(n.y+(n.t==="bs"?34:n.t==="core"?44:38))+'" text-anchor="middle" font-size="11" fill="var(--text)">'+n.n+'</text></g>'});
@@ -96,7 +125,18 @@ document.getElementById("map").addEventListener("click",function(e){var g=e.targ
 document.getElementById("panel").addEventListener("click",function(e){var a=e.target.getAttribute("data-a");if(a&&sel){setSt(byId[sel],a);render()}});
 document.getElementById("rnd").onclick=function(){var pool=nodes.filter(function(n){return n.t!=="core"&&st[n.id]!=="down"});if(pool.length){var n=pool[Math.floor(Math.random()*pool.length)];sel=n.id;setSt(n,"down");render()}};
 document.getElementById("all").onclick=function(){nodes.forEach(function(n){st[n.id]="ok"});log("ok","Все узлы восстановлены")};
-document.getElementById("theme").onclick=function(){var r=document.documentElement,d=r.getAttribute("data-theme")==="dark"||(!r.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme:dark)").matches);r.setAttribute("data-theme",d?"light":"dark")};
+var themes=[["light","#f4f6f8","Светлая"],["dark","#12161b","Тёмная"],["navy","#0a1628","Диспетчерская"],["neon","#0d0221","Неон"],["green","#04110a","Терминал"],["sand","#f6efe3","Песок"]];
+var swb=document.getElementById("sw"),bgc=document.getElementById("bgc");
+function applyTheme(t,custom){var r=document.documentElement;r.setAttribute("data-theme",t);r.style.removeProperty("--bg");
+if(custom){r.style.setProperty("--bg",custom);bgc.value=custom}else{var f=themes.filter(function(x){return x[0]===t})[0];if(f)bgc.value=f[1]}
+[].forEach.call(swb.children,function(b){b.className=(b.getAttribute("data-t")===t&&!custom)?"on":""});
+try{localStorage.setItem("noc-theme",JSON.stringify([t,custom||""]))}catch(e){}}
+themes.forEach(function(t){var b=document.createElement("b");b.setAttribute("data-t",t[0]);b.title=t[2];b.style.background=t[1];b.onclick=function(){applyTheme(t[0])};swb.appendChild(b)});
+bgc.oninput=function(){applyTheme(document.documentElement.getAttribute("data-theme")||"light",bgc.value)};
+var sv=null;try{sv=JSON.parse(localStorage.getItem("noc-theme"))}catch(e){}
+applyTheme(sv&&sv[0]?sv[0]:(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"),sv&&sv[1]?sv[1]:"");
+function tick(){document.getElementById("clock").textContent="NOC · онлайн · "+new Date().toLocaleTimeString("ru-RU")}
+tick();setInterval(tick,1000);
 render();
 </script>
 </body>
