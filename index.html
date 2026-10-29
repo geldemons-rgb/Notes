@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Центр управления сетью</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--text:#1b2127;--muted:#8a93a0;--line:#dde2e8;--accent:#1f6feb;--ok:#1a8a4a;--warn:#b7791f;--bad:#d1383d;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161b;--card:#1b2027;--text:#e6e9ed;--muted:#6f7885;--line:#2f353e;--accent:#6aa5ff;--ok:#4cc380;--warn:#e0a84a;--bad:#ff6b6f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12161b;--card:#1b2027;--text:#e6e9ed;--muted:#6f7885;--line:#2f353e;--accent:#6aa5ff;--ok:#4cc380;--warn:#e0a84a;--bad:#ff6b6f;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45}
+main{max-width:1000px;margin:0 auto;padding:20px 16px 32px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 16px}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.kpi div,.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.kpi small{display:block;color:var(--muted)}
+.kpi strong{font-size:1.5rem}
+.grid{display:grid;grid-template-columns:1.6fr 1fr;gap:14px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+button{background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;cursor:pointer;font:inherit;font-size:.85rem}
+button:hover{border-color:var(--accent)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+svg{width:100%;height:auto;display:block}
+.n{cursor:pointer}
+h3{margin:0 0 8px;font-size:1rem}
+.log{font-size:.85rem;max-height:170px;overflow:auto}
+.log p{margin:0 0 6px;padding-left:8px;border-left:3px solid var(--line)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
+</style>
+</head>
+<body>
+<main>
+<h1>Центр управления сетью</h1>
+<p class="sub">Ядро, агрегация и сеть доступа. Нажми на узел, чтобы управлять им, или имитируй аварию.</p>
+<div class="kpi">
+<div><small>Доступность абонентов</small><strong id="k1"></strong></div>
+<div><small>Без связи, абонентов</small><strong id="k2"></strong></div>
+<div><small>Активные аварии</small><strong id="k3"></strong></div>
+</div>
+<div class="grid">
+<section class="card">
+<svg id="map" viewBox="0 0 600 330" role="img" aria-label="Топология сети"></svg>
+<div class="legend"><span><i style="background:var(--ok)"></i>норма</span><span><i style="background:var(--warn)"></i>деградация</span><span><i style="background:var(--bad)"></i>авария</span><span><i style="background:var(--muted)"></i>нет связи с центром</span></div>
+<div class="btns"><button id="rnd">Имитировать аварию</button><button id="all">Восстановить всё</button><button id="theme">Сменить тему</button></div>
+</section>
+<section>
+<div class="card" id="panel" style="margin-bottom:14px"></div>
+<div class="card"><h3>Журнал событий</h3><div class="log" id="log"></div></div>
+</section>
+</div>
+</main>
+<script>
+var nodes=[{id:"c",n:"Ядро сети",t:"core",x:300,y:45,p:null}];
+var i,j,subsSeed=[1800,2400,950,3100,1500,2200,2800,1200,1900];
+for(i=0;i<3;i++){nodes.push({id:"a"+i,n:"Агрегация A"+(i+1),t:"agg",x:100+200*i,y:150,p:"c"});
+for(j=0;j<3;j++)nodes.push({id:"b"+i+j,n:"БС-"+(i+1)+"0"+(j+1),t:"bs",x:100+200*i+(j-1)*65,y:265,p:"a"+i,subs:subsSeed[i*3+j]})}
+var st={};nodes.forEach(function(n){st[n.id]="ok"});
+var byId={};nodes.forEach(function(n){byId[n.id]=n});
+var sel=null,logs=[];
+function eff(n){if(st[n.id]==="down")return"down";if(n.p){var e=eff(byId[n.p]);if(e==="down"||e==="lost")return"lost"}return st[n.id]}
+function kids(n){return nodes.filter(function(x){return x.p===n.id})}
+function bsUnder(n){if(n.t==="bs")return[n];var r=[];kids(n).forEach(function(k){r=r.concat(bsUnder(k))});return r}
+function log(sev,t){logs.unshift({sev:sev,t:t,time:new Date().toLocaleTimeString("ru-RU")});if(logs.length>12)logs.pop();render()}
+var names={ok:"В норме",warn:"Деградация",down:"Авария",lost:"Нет связи с центром"};
+var col={ok:"var(--ok)",warn:"var(--warn)",down:"var(--bad)",lost:"var(--muted)"};
+function setSt(n,s){if(st[n.id]===s)return;st[n.id]=s;
+if(s==="down"){var lost=bsUnder(n).filter(function(b){return b!==n}).length;log("down","Авария: "+n.n+(lost?". Потеряна связь с "+lost+" БС":""))}
+else if(s==="warn")log("warn","Деградация: "+n.n+", рост потерь пакетов");
+else log("ok","Восстановлено: "+n.n);}
+function render(){
+var g="";
+nodes.forEach(function(n){if(n.p){var p=byId[n.p];g+='<line x1="'+p.x+'" y1="'+p.y+'" x2="'+n.x+'" y2="'+n.y+'" stroke="'+col[eff(n)==="lost"?"lost":eff(n)==="down"?"down":"ok"]+'" stroke-width="2" '+(eff(n)==="lost"||eff(n)==="down"?'stroke-dasharray="4 4"':'')+'/>'}});
+nodes.forEach(function(n){var e=eff(n),c=col[e],s=sel===n.id?' stroke="var(--accent)" stroke-width="3"':' stroke="var(--card)" stroke-width="2"';
+g+='<g class="n" data-id="'+n.id+'">';
+if(n.t==="bs")g+='<rect x="'+(n.x-22)+'" y="'+(n.y-16)+'" width="44" height="32" rx="7" fill="'+c+'"'+s+'/>';
+else g+='<circle cx="'+n.x+'" cy="'+n.y+'" r="'+(n.t==="core"?26:21)+'" fill="'+c+'"'+s+'/>';
+g+='<text x="'+n.x+'" y="'+(n.y+(n.t==="bs"?34:n.t==="core"?44:38))+'" text-anchor="middle" font-size="11" fill="var(--text)">'+n.n+'</text></g>'});
+document.getElementById("map").innerHTML=g;
+var tot=0,ok=0,al=0;
+nodes.forEach(function(n){var e=eff(n);if(n.t==="bs"){tot+=n.subs;if(e==="ok"||e==="warn")ok+=n.subs}if(st[n.id]!=="ok")al++});
+document.getElementById("k1").textContent=(100*ok/tot).toFixed(1)+"%";
+document.getElementById("k2").textContent=(tot-ok).toLocaleString("ru-RU");
+document.getElementById("k3").textContent=al;
+var p=document.getElementById("panel");
+if(!sel)p.innerHTML="<h3>Узел не выбран</h3><span style='color:var(--muted)'>Нажми на узел на схеме.</span>";
+else{var n=byId[sel],e=eff(n),k=n.t==="bs"?"Базовая станция · "+n.subs.toLocaleString("ru-RU")+" абонентов":n.t==="agg"?"Узел агрегации · БС: "+kids(n).length:"Ядро · узлов агрегации: 3";
+var load=e==="ok"?30+(n.n.length*7)%50:e==="warn"?92:0;
+p.innerHTML="<h3>"+n.n+"</h3><div style='color:var(--muted)'>"+k+"</div><p style='margin:8px 0'>Статус: <b style='color:"+col[e]+"'>"+names[e]+"</b><br>Загрузка: <b>"+(e==="down"||e==="lost"?"—":load+"%")+"</b></p><div class='btns' style='margin:0'><button data-a='down'>Авария</button><button data-a='warn'>Деградация</button><button data-a='ok'>Восстановить</button></div>"}
+document.getElementById("log").innerHTML=logs.length?logs.map(function(l){return"<p style='border-color:"+col[l.sev]+"'><span style='color:var(--muted)'>"+l.time+"</span> "+l.t+"</p>"}).join(""):"<span style='color:var(--muted)'>Событий пока нет.</span>";
+}
+document.getElementById("map").addEventListener("click",function(e){var g=e.target.closest(".n");if(g){sel=g.getAttribute("data-id");render()}});
+document.getElementById("panel").addEventListener("click",function(e){var a=e.target.getAttribute("data-a");if(a&&sel){setSt(byId[sel],a);render()}});
+document.getElementById("rnd").onclick=function(){var pool=nodes.filter(function(n){return n.t!=="core"&&st[n.id]!=="down"});if(pool.length){var n=pool[Math.floor(Math.random()*pool.length)];sel=n.id;setSt(n,"down");render()}};
+document.getElementById("all").onclick=function(){nodes.forEach(function(n){st[n.id]="ok"});log("ok","Все узлы восстановлены")};
+document.getElementById("theme").onclick=function(){var r=document.documentElement,d=r.getAttribute("data-theme")==="dark"||(!r.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme:dark)").matches);r.setAttribute("data-theme",d?"light":"dark")};
+render();
+</script>
+</body>
+</html>
